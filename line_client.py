@@ -5,8 +5,10 @@ line_client.py
 """
 
 import os
+# pyrefly: ignore [missing-import]
 import httpx
 import logging
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 
 # โหลดค่าจากไฟล์ .env ที่อยู่โฟลเดอร์เดียวกัน (ถ้ามี)
@@ -72,6 +74,10 @@ async def push_mention_message(
     """
     mention_text = f"@{mention_name}"
     full_text = f"{mention_text}\n{body_text}"
+    
+    # LINE คำนวณ index/length เป็นหน่วย UTF-16
+    # ใช้ encode('utf-16-le') เพื่อหาความยาวที่แท้จริงตามสเปคของ LINE
+    mention_length = len(mention_text.encode("utf-16-le")) // 2
 
     headers = {
         "Content-Type": "application/json",
@@ -87,7 +93,7 @@ async def push_mention_message(
                     "mentionees": [
                         {
                             "index": 0,
-                            "length": len(mention_text),
+                            "length": mention_length,
                             "type": "user",
                             "userId": mention_user_id,
                         }

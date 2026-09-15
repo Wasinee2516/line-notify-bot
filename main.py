@@ -6,9 +6,15 @@ main.py
 กรณีที่ 2: จนท. สร้างงาน + assign พร้อมกัน -> แจ้งเตือนครั้งเดียว
 """
 
+# pyrefly: ignore [missing-import]
+from line_client import LINE_GROUP_ID
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, Request, Header
+# pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 from datetime import datetime
 import hashlib
@@ -39,8 +45,17 @@ TICKETS: dict[int, dict] = {}
 _next_id = 1
 
 # mapping ชื่อช่าง (technician_id) -> LINE userId
-# ของจริงควรเป็นตาราง technicians (id, name, line_user_id) ใน database
-TECHNICIAN_LINE_IDS: dict[str, str] = {}
+# วิธีใช้งานสำหรับทีมขนาดเล็ก: 
+# 1. ให้ช่างพิมพ์ "ลงทะเบียนช่าง ชื่อ" ในกลุ่ม
+# 2. บอทจะตอบกลับพร้อม "รหัสประจำตัว (User ID)" ที่ขึ้นต้นด้วยตัว U
+# 3. นำรหัสที่บอทตอบกลับ มาใส่ใน Dictionary ด้านล่างนี้แทนที่ของเดิมได้เลย!
+TECHNICIAN_LINE_IDS: dict[str, str] = {
+    "ช่างแป้ง": "",# ตัวอย่าง
+    "ช่างฟ้า": "", # ตัวอย่าง
+    "ช่างพลู": "", # ตัวอย่าง
+
+    # เพิ่มชื่อช่างทั้ง 7 คนของคุณที่นี่...
+}
 
 
 def _new_id() -> int:
@@ -167,9 +182,10 @@ async def _notify_assigned(text: str, technician_id: str, technician_name: str) 
         await push_to_group(text)
 
 
-# ---------- Webhook: จับ LINE userId ของช่างตอนลงทะเบียนในกลุ่ม ----------
+# ---------- Webhook: จับ LINE userId ของช่าง และ Group ID ตอนลงทะเบียนในกลุ่ม ----------
 
 REGISTER_KEYWORD = "ลงทะเบียนช่าง"  # ช่างพิมพ์ "ลงทะเบียนช่าง ช่างเอ" ในกลุ่ม
+LAST_GROUP_ID: str = None
 
 
 def _verify_line_signature(body: bytes, signature: str) -> bool:
@@ -181,6 +197,7 @@ def _verify_line_signature(body: bytes, signature: str) -> bool:
 
 @app.post("/line/webhook")
 async def line_webhook(request: Request, x_line_signature: str = Header(None)):
+    global LAST_GROUP_ID
     body = await request.body()
 
     if not x_line_signature or not _verify_line_signature(body, x_line_signature):
@@ -189,6 +206,11 @@ async def line_webhook(request: Request, x_line_signature: str = Header(None)):
     payload = await request.json()
 
     for event in payload.get("events", []):
+        source = event.get("source", {})
+        if source.get("type") == "group":
+            LAST_GROUP_ID = source.get("groupId")
+            print(f"📌 พบ Group ID: {LAST_GROUP_ID}")
+
         if event.get("type") != "message":
             continue
         message = event.get("message", {})
@@ -196,15 +218,21 @@ async def line_webhook(request: Request, x_line_signature: str = Header(None)):
             continue
 
         text = message.get("text", "").strip()
-        user_id = event.get("source", {}).get("userId")
+        user_id = source.get("userId")
+        group_id = source.get("groupId")
 
         if text.startswith(REGISTER_KEYWORD) and user_id:
             # ตัวอย่าง: "ลงทะเบียนช่าง ช่างเอ" -> technician_id = "ช่างเอ"
             technician_id = text.replace(REGISTER_KEYWORD, "", 1).strip()
             if technician_id:
                 TECHNICIAN_LINE_IDS[technician_id] = user_id
-                # ตอบกลับยืนยันในกลุ่ม (ใช้ push แทน reply เพื่อความง่ายของตัวอย่าง)
-                await push_to_group(f"ลงทะเบียน {technician_id} เรียบร้อย ✅")
+                target_id = group_id or LINE_GROUP_ID
+                reply_text = (
+                    f"ลงทะเบียน {technician_id} ชั่วคราวเรียบร้อย ✅\n\n"
+                    f"⚠️ กรุณาก๊อปปี้รหัสประจำตัวด้านล่างนี้ไปให้แอดมินใส่ในโค้ด (main.py) เพื่อบันทึกถาวร:\n\n"
+                    f"{user_id}"
+                )
+                await push_to_group(reply_text, group_id=target_id)
 
     return {"status": "ok"}
 
@@ -213,6 +241,17 @@ async def line_webhook(request: Request, x_line_signature: str = Header(None)):
 async def list_technicians():
     """ดูรายชื่อช่างที่ลงทะเบียน LINE userId ไว้แล้ว"""
     return TECHNICIAN_LINE_IDS
+
+
+@app.get("/group-id")
+async def get_group_id():
+    """ดู Group ID ล่าสุดที่จับได้จาก webhook"""
+    return {
+        "last_captured_group_id": LAST_GROUP_ID,
+        "current_configured_group_id": LINE_GROUP_ID,
+        "note": "Group ID ใน LINE จะขึ้นต้นด้วย C (เช่น Cxxxxxxxx...), หาก current_configured_group_id ขึ้นต้นด้วย U แสดงว่าเป็น User ID (แชทส่วนตัว)"
+    }
+
 
 @app.get("/test")
 async def serve_test_console():
