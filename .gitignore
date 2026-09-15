@@ -1,0 +1,7 @@
+# ไฟล์ที่ไม่ต้องอัปโหลดขึ้น GitHub
+.env
+.venv
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store

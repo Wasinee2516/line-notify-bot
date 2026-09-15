@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console ทดสอบแจ้งเตือน LINE</title>
+    <style>
+        :root {
+            --bg: #10121A;
+            --panel: #181B26;
+            --panel-2: #1F2330;
+            --border: #2C3040;
+            --text: #E7E8EC;
+            --text-dim: #8D93A6;
+            --accent: #E8A33D;
+            --accent-dim: #6B5223;
+            --ok: #35B88C;
+            --ok-bg: #0F2A22;
+            --err: #E2574C;
+            --err-bg: #2E1512;
+            --radius: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, "Segoe UI", "Noto Sans Thai", sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 20px 60px;
+        }
+
+        header {
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0 0 4px;
+        }
+
+        .sub {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .connbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .connbar input {
+            flex: 1;
+            min-width: 220px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .dot.ok {
+            background: var(--ok);
+        }
+
+        .dot.err {
+            background: var(--err);
+        }
+
+        .conn-label {
+            color: var(--text-dim);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 860px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+        }
+
+        .card h2 {
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card .desc {
+            color: var(--text-dim);
+            font-size: 12px;
+            margin: 0 0 14px;
+        }
+
+        .badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin: 10px 0 4px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 8px 10px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        button {
+            margin-top: 14px;
+            width: 100%;
+            background: var(--accent);
+            color: #241A05;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        button:hover {
+            filter: brightness(1.08);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .error-text {
+            color: var(--err);
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .techlist {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .techchip {
+            font-size: 12px;
+            padding: 4px 10px;
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-dim);
+        }
+
+        .log-section {
+            margin-top: 24px;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .log-header h2 {
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .log-box {
+            background: #0C0D13;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            font-family: ui-monospace, "SF Mono", Menlo, monospace;
+            font-size: 12px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-top {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 6px;
+            font-family: inherit;
+        }
+
+        .log-method {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .log-status {
+            padding: 1px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .log-status.ok {
+            background: var(--ok-bg);
+            color: var(--ok);
+        }
+
+        .log-status.err {
+            background: var(--err-bg);
+            color: var(--err);
+        }
+
+        .log-time {
+            color: var(--text-dim);
+            margin-left: auto;
+        }
+
+        .log-body {
+            color: var(--text-dim);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .empty-log {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+
+        <header>
+            <h1>Console ทดสอบระบบแจ้งเตือน LINE</h1>
+            <div class="sub">ยิง request เข้า backend จริง เพื่อทดสอบก่อนต่อกับระบบของเพื่อนคุณ</div>
+        </header>
+
+        <div class="connbar">
+            <span class="dot" id="connDot"></span>
+            <span class="conn-label" id="connLabel">ยังไม่เช็คการเชื่อมต่อ</span>
+            <input id="baseUrl" type="text" value="http://localhost:8000" placeholder="เช่น http://localhost:8000">
+            <button class="secondary" style="margin:0; width:auto; padding:8px 16px;"
+                onclick="checkConnection()">เช็คการเชื่อมต่อ</button>
+        </div>
+
+        <div class="grid">
+
+            <div class="card">
+                <h2>กรณีที่ 1 — user แจ้งข้อความ <span class="badge">POST /messages</span></h2>
+                <p class="desc">จำลองว่า user พิมพ์ฝากข้อความถึงช่างเข้ามา จะยิงแจ้งเตือน LINE รอบแรกทันที</p>
+                <label>User ID</label>
+                <input id="m_user_id" value="u001">
+                <label>ชื่อผู้แจ้ง</label>
+                <input id="m_user_name" value="คุณสมชาย">
+                <label>ข้อความ</label>
+                <textarea id="m_message">แอร์ห้อง 302 ไม่เย็น</textarea>
+                <div class="error-text" id="m_error"></div>
+                <button onclick="submitMessage()">ส่งข้อความทดสอบ</button>
+            </div>
+
+            <div class="card">
+                <h2>Assign งาน <span class="badge">PATCH /tickets/:id/assign</span></h2>
+                <p class="desc">มอบหมายงาน ticket ที่มีอยู่แล้วให้ช่าง จะยิงแจ้งเตือน LINE
+                    (แท็กชื่อได้ถ้าช่างลงทะเบียนแล้ว)</p>
+                <label>เลขงาน (ticket id)</label>
+                <input id="a_ticket_id" value="1">
+                <label>รหัสช่าง (ต้องตรงกับตอนลงทะเบียนในกลุ่ม)</label>
+                <input id="a_tech_id" value="ฟ้า">
+                <label>ชื่อช่างที่จะแสดง</label>
+                <input id="a_tech_name" value="ฟ้า">
+                <label>มอบหมายโดย</label>
+                <input id="a_assigned_by" value="แอดมินบี">
+                <div class="error-text" id="a_error"></div>
+                <button onclick="submitAssign()">ยืนยัน assign</button>
+            </div>
+
+            <div class="card">
+                <h2>กรณีที่ 2 — จนท. สร้างเอง <span class="badge">POST /tickets/staff-create</span></h2>
+                <p class="desc">เจ้าหน้าที่สร้างงานและ assign พร้อมกันในขั้นตอนเดียว ยิงแจ้งเตือนครั้งเดียว</p>
+                <label>ข้อความ / รายละเอียดงาน</label>
+                <textarea id="s_message">ตรวจเช็คลิฟต์ตัวที่ 2</textarea>
+                <label>สร้างโดย (เจ้าหน้าที่)</label>
+                <input id="s_created_by" value="แอดมินบี">
+                <label>รหัสช่าง</label>
+                <input id="s_tech_id" value="พลู">
+                <label>ชื่อช่างที่จะแสดง</label>
+                <input id="s_tech_name" value="พลู">
+                <div class="error-text" id="s_error"></div>
+                <button onclick="submitStaffCreate()">สร้างงาน + assign</button>
+            </div>
+
+            <div class="card">
+                <h2>ช่างที่ลงทะเบียนแล้ว <span class="badge">GET /technicians</span></h2>
+                <p class="desc">รายชื่อช่างที่พิมพ์ "ลงทะเบียนช่าง ..." ในกลุ่ม LINE แล้ว และระบบจับ userId ไว้ให้</p>
+                <button onclick="loadTechnicians()">โหลดรายชื่อ</button>
+                <div class="techlist" id="techList"></div>
+            </div>
+
+        </div>
+
+        <div class="log-section">
+            <div class="log-header">
+                <h2>ประวัติการยิง request</h2>
+                <button class="secondary" style="margin:0; width:auto; padding:6px 14px;"
+                    onclick="clearLog()">ล้างประวัติ</button>
+            </div>
+            <div class="log-box" id="logBox">
+                <div class="empty-log">ยังไม่มีการยิง request — ลองกดปุ่มด้านบนดูได้เลย</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function getBaseUrl() {
+            return document.getElementById('baseUrl').value.trim().replace(/\/$/, '');
+        }
+
+        function showError(id, msg) {
+            const el = document.getElementById(id);
+            el.textContent = msg;
+            el.style.display = msg ? 'block' : 'none';
+        }
+
+        async function callApi(method, path, body) {
+            const base = getBaseUrl();
+            if (!base) {
+                alert('กรุณากรอก URL ของ backend ก่อน');
+                return null;
+            }
+            const opts = { method, headers: {} };
+            if (body) {
+                opts.headers['Content-Type'] = 'application/json';
+                opts.body = JSON.stringify(body);
+            }
+            const startedAt = new Date();
+            let status = 0;
+            let resultText = '';
+            let ok = false;
+            try {
+                const res = await fetch(base + path, opts);
+                status = res.status;
+                ok = res.ok;
+                const json = await res.json().catch(() => ({}));
+                resultText = JSON.stringify(json, null, 2);
+                logRequest(method, path, status, ok, body, resultText, startedAt);
+                return ok ? json : null;
+            } catch (e) {
+                logRequest(method, path, 0, false, body, 'เชื่อมต่อไม่ได้: ' + e.message, startedAt);
+                return null;
+            }
+        }
+
+        function logRequest(method, path, status, ok, body, resultText, startedAt) {
+            const logBox = document.getElementById('logBox');
+            const empty = logBox.querySelector('.empty-log');
+            if (empty) empty.remove();
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = startedAt.toLocaleTimeString('th-TH', { hour12: false });
+            const statusLabel = status === 0 ? 'error' : status;
+
+            entry.innerHTML =
+                '<div class="log-top">' +
+                '<span class="log-method">' + method + '</span>' +
+                '<span>' + path + '</span>' +
+                '<span class="log-status ' + (ok ? 'ok' : 'err') + '">' + statusLabel + '</span>' +
+                '<span class="log-time">' + time + '</span>' +
+                '</div>' +
+                '<div class="log-body">' + escapeHtml(resultText) + '</div>';
+
+            logBox.prepend(entry);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function clearLog() {
+            document.getElementById('logBox').innerHTML = '<div class="empty-log">ยังไม่มีการยิง request — ลองกดปุ่มด้านบนดูได้เลย</div>';
+        }
+
+        async function checkConnection() {
+            const dot = document.getElementById('connDot');
+            const label = document.getElementById('connLabel');
+            label.textContent = 'กำลังเช็ค...';
+            dot.className = 'dot';
+            const result = await callApi('GET', '/technicians');
+            if (result !== null) {
+                dot.className = 'dot ok';
+                label.textContent = 'เชื่อมต่อ backend สำเร็จ';
+            } else {
+                dot.className = 'dot err';
+                label.textContent = 'เชื่อมต่อไม่ได้ ตรวจ URL และว่า backend รันอยู่หรือเปล่า';
+            }
+        }
+
+        async function submitMessage() {
+            showError('m_error', '');
+            const user_id = document.getElementById('m_user_id').value.trim();
+            const user_name = document.getElementById('m_user_name').value.trim();
+            const message = document.getElementById('m_message').value.trim();
+            if (!user_id || !user_name || !message) {
+                showError('m_error', 'กรอกข้อมูลให้ครบทุกช่อง');
+                return;
+            }
+            await callApi('POST', '/messages', { user_id, user_name, message });
+        }
+
+        async function submitAssign() {
+            showError('a_error', '');
+            const ticket_id = document.getElementById('a_ticket_id').value.trim();
+            const technician_id = document.getElementById('a_tech_id').value.trim();
+            const technician_name = document.getElementById('a_tech_name').value.trim();
+            const assigned_by = document.getElementById('a_assigned_by').value.trim();
+            if (!ticket_id || !technician_id || !technician_name || !assigned_by) {
+                showError('a_error', 'กรอกข้อมูลให้ครบทุกช่อง');
+                return;
+            }
+            await callApi('PATCH', '/tickets/' + encodeURIComponent(ticket_id) + '/assign', {
+                technician_id, technician_name, assigned_by
+            });
+        }
+
+        async function submitStaffCreate() {
+            showError('s_error', '');
+            const message = document.getElementById('s_message').value.trim();
+            const created_by = document.getElementById('s_created_by').value.trim();
+            const technician_id = document.getElementById('s_tech_id').value.trim();
+            const technician_name = document.getElementById('s_tech_name').value.trim();
+            if (!message || !created_by || !technician_id || !technician_name) {
+                showError('s_error', 'กรอกข้อมูลให้ครบทุกช่อง');
+                return;
+            }
+            await callApi('POST', '/tickets/staff-create', {
+                message, created_by, technician_id, technician_name
+            });
+        }
+
+        async function loadTechnicians() {
+            const result = await callApi('GET', '/technicians');
+            const list = document.getElementById('techList');
+            list.innerHTML = '';
+            if (!result || Object.keys(result).length === 0) {
+                list.innerHTML = '<span class="conn-label">ยังไม่มีช่างลงทะเบียน — ให้ช่างพิมพ์ "ลงทะเบียนช่าง ชื่อ" ในกลุ่ม LINE</span>';
+                return;
+            }
+            Object.keys(result).forEach(name => {
+                const chip = document.createElement('span');
+                chip.className = 'techchip';
+                chip.textContent = name;
+                list.appendChild(chip);
+            });
+        }
+
+        checkConnection();
+        loadTechnicians();
+    </script>
+</body>
+
+</html>
