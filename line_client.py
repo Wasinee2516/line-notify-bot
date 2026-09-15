@@ -32,7 +32,8 @@ LINE_CHANNEL_ACCESS_TOKEN = _get_required_env("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = _get_required_env("LINE_CHANNEL_SECRET")  # ใช้ตรวจสอบ webhook signature
 LINE_GROUP_ID = _get_required_env("LINE_GROUP_ID")  # group id ที่ดึงมาจาก webhook ตอน setup
 LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push"
- 
+
+SYSTEM_URL = os.environ.get("SYSTEM_URL", "").strip()
  
 async def push_to_group(text: str, group_id: str = LINE_GROUP_ID) -> None:
     """
@@ -123,12 +124,34 @@ async def push_mention_message(
 def build_new_message_text(ticket_id: int, user_name: str, message: str) -> str:
     """ข้อความแจ้งเตือน #1 : user เพิ่งฝากข้อความเข้ามา (กรณีที่ 1 ขั้นตอนแรก)"""
     return (
-        f"🔔 มีข้อความใหม่จากลูกค้า\n"
+        f"🔔 มีข้อความใหม่จากเจ้าหน้าที่ผ่านขาหมู Chatbot\n"
         f"เลขงาน: #{ticket_id}\n"
         f"จาก: {user_name}\n"
         f"ข้อความ: {message}\n"
         f"สถานะ: รอมอบหมายช่าง"
     )
+
+def _with_system_link(text: str) -> str:
+    """
+    แนบลิงก์ระบบจัดการข้อความถึงช่างไว้ท้ายข้อความ
+    เรียกจากตัวสร้างข้อความทุกฟังก์ชัน (ไม่ใช่จาก push_to_group/push_mention_message)
+    เพื่อไม่ให้ลิงก์ซ้ำตอน push_mention_message fallback ไปเรียก push_to_group ข้างใน
+    """
+    if not SYSTEM_URL:
+        return text  # ยังไม่ได้ตั้งค่า SYSTEM_URL ก็ส่งข้อความปกติไปก่อน ไม่ error
+    return f"{text}\n\n📋 ระบบจัดการข้อความถึงช่าง:\n{SYSTEM_URL}"
+ 
+ 
+def build_new_message_text(ticket_id: int, user_name: str, message: str) -> str:
+    """ข้อความแจ้งเตือน #1 : user เพิ่งฝากข้อความเข้ามา (กรณีที่ 1 ขั้นตอนแรก)"""
+    text = (
+        f"🔔 มีข้อความใหม่จากเจ้าหน้าที่ผ่านขาหมู Chatbot\n"
+        f"เลขงาน: #{ticket_id}\n"
+        f"จาก: {user_name}\n"
+        f"ข้อความ: {message}\n"
+        f"สถานะ: รอมอบหมายช่าง"
+    )
+    return _with_system_link(text)
  
  
 def build_assigned_text(ticket_id: int, technician_name: str, assigned_by: str, source: str) -> str:
@@ -137,16 +160,18 @@ def build_assigned_text(ticket_id: int, technician_name: str, assigned_by: str, 
     ใช้ร่วมกันทั้งกรณีที่ 1 (assign ทีหลัง) และกรณีที่ 2 (สร้างพร้อม assign)
     """
     if source == "staff":
-        return (
+        text = (
             f"✅ งานใหม่ถูกสร้างและมอบหมายแล้ว\n"
             f"เลขงาน: #{ticket_id}\n"
             f"มอบหมายให้: {technician_name}\n"
             f"สร้างโดย: {assigned_by}"
         )
-    return (
+        return _with_system_link(text)
+ 
+    text = (
         f"✅ งานถูกมอบหมายแล้ว\n"
         f"เลขงาน: #{ticket_id}\n"
         f"มอบหมายให้: {technician_name}\n"
         f"มอบหมายโดย: {assigned_by}"
     )
- 
+    return _with_system_link(text)
