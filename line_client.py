@@ -109,11 +109,11 @@ async def push_mention_message(
             resp.raise_for_status()
     except httpx.HTTPStatusError as e:
         logger.error(f"LINE mention push failed: {e.response.status_code} - {e.response.text}")
-        # fallback: ถ้ายิง mention ไม่สำเร็จ ให้ยิงข้อความธรรมดาแทน ดีกว่าไม่แจ้งเตือนเลย
-        await push_to_group(body_text, group_id)
+        # fallback: ถ้ายิง mention ไม่สำเร็จ ให้ยิงข้อความธรรมดาแต่ยังคงมีคำว่า @ชื่อช่าง อยู่ในข้อความ
+        await push_to_group(full_text, group_id)
     except Exception as e:
         logger.error(f"LINE mention push error: {e}")
-        await push_to_group(body_text, group_id)
+        await push_to_group(full_text, group_id)
 
 
 def build_new_message_text(ticket_id: int, user_name: str, message: str) -> str:
